@@ -33,9 +33,11 @@ clf = GaussianNB()
 
 t0 = time()
 clf.fit(features_train, labels_train)
-print("training time:", round(time()-t0, 3), "s")
+print("training time: " + str(round(time()-t0, 3)) + "s")
 
+t1 = time()
 pred = clf.predict(features_test)
+print("test time: " + str(round(time()-t1, 3)) + "s")
 
 print("Accuracy via accuracy_score: ", accuracy_score(labels_test, pred))
 print("Accuracy via score method: ", clf.score(features_test, labels_test))
