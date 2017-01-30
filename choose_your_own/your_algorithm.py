@@ -30,13 +30,24 @@ plt.show()
 
 ### your code here!  name your classifier object clf if you want the 
 ### visualization code (prettyPicture) to show you the decision boundary
+from time import time
 
+from sklearn.neighbors.nearest_centroid import NearestCentroid
+from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 
+# clf = NearestCentroid()
+# clf = AdaBoostClassifier()
+clf = RandomForestClassifier()
 
+t0 = time()
+clf.fit(features_train, labels_train)
+print("training time: " + str(round(time()-t0, 3)) + "s")
 
+t1 = time()
+pred = clf.predict(features_test)
+print("test time: " + str(round(time()-t1, 3)) + "s")
 
-
-
+print("Accuracy: ", clf.score(features_test, labels_test))
 
 try:
     prettyPicture(clf, features_test, labels_test)
