@@ -81,7 +81,9 @@ except NameError:
 exercised_stock_options_data = [i[2] for i in data if i[2] != 0]
 print "Maximum exercised stock options: " + str(max(exercised_stock_options_data))
 print "Minimum exercised stock options: " + str(min(exercised_stock_options_data))
+print "Rescaled exercised stock options for $1M: " + str((float(1000000-min(exercised_stock_options_data))/(max(exercised_stock_options_data)-min(exercised_stock_options_data))))
 
 salary_data = [i[1] for i in data if i[1] != 0]
 print "Maximum Salary: " + str(max(salary_data))
 print "Minimum Salary: " + str(min(salary_data))
+print "Rescaled salary for $200000: " + str((float(200000-min(salary_data))/(max(salary_data)-min(salary_data))))
