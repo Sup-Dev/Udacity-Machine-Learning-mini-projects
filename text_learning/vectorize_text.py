@@ -52,7 +52,7 @@ for name, from_person in [("sara", from_sara), ("chris", from_chris)]:
         
         ### use str.replace() to remove any instances of the words
         ### ["sara", "shackleton", "chris", "germani"]
-        for invalid in ["sara", "shackleton", "chris", "germani"]:
+        for invalid in ["sara", "shackleton", "chris", "germani", "sshacklensf", "cgermannsf", "houectect", "houston", "houect"]:
             text = text.replace(invalid, '')
 
         ### append the text to word_data
