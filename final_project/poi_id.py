@@ -20,12 +20,33 @@ features_list = ['poi', 'salary', 'deferral_payments', 'loan_advances', 'bonus',
                 'restricted_stock', 'director_fees', 'to_messages', 'from_poi_to_this_person', 'from_messages', 
                 'from_this_person_to_poi', 'shared_receipt_with_poi'] # You will need to use more features
 
+print("number of features to start with: {0}".format(len(features_list) - 1))
+
 ### Load the dictionary containing the dataset
 with open("final_project_dataset.pkl", "r") as data_file:
     data_dict = pickle.load(data_file)
 
 ### Task 2: Remove outliers
 print("\nSize of the dataset: " + str(len(data_dict)))
+
+npoi = 0
+for p in data_dict.values():
+    if p['poi']:
+        npoi += 1
+print("number of pois: {0}".format(npoi))
+print("number of non-pois: {0}".format(len(data_dict) - npoi))
+
+
+print("print out the number of missing values in each feature: ")
+NaNInFeatures = [0 for i in range(len(features_list))]
+for i, person in enumerate(data_dict.values()):
+    for j, feature in enumerate(features_list):
+        if person[feature] == 'NaN':
+            NaNInFeatures[j] += 1
+
+for i, feature in enumerate(features_list):
+    print(feature, NaNInFeatures[i])
+
 
 # print("\nThe list of people in the database: ")
 # for person in sorted(data_dict.keys()):
@@ -69,9 +90,12 @@ from sklearn.feature_selection import SelectKBest, f_classif
 nc = NearestCentroid()
 adc = AdaBoostClassifier()
 
-print("Select 7 features by importance:")
-selector = SelectKBest(f_classif, k = 7)
+print("Select 10 features by importance:")
+selector = SelectKBest(f_classif, k = 13)
 selector.fit(features, labels)
+print("Scores of the features: ")
+for score in sorted(selector.scores_):
+    print(score)
 reduced_features = selector.fit_transform(features, labels)
 
 
@@ -89,6 +113,17 @@ from sklearn.grid_search import GridSearchCV
 features_train, features_test, labels_train, labels_test = \
     train_test_split(reduced_features, labels, test_size=0.3, random_state=42)
 
+# Ada Boost
+t0 = time()
+parameters = {'n_estimators': [50,100,200], 'learning_rate': [0.4,0.6,1]}
+
+clf = GridSearchCV(adc, parameters, scoring = 'recall')
+clf.fit(features_train, labels_train)
+print("Best parameters are:")
+print(clf.best_params_)
+print "training time: {0}".format(round(time()-t0, 3))
+clf = clf.best_estimator_
+
 # Nearest Centroid
 t0 = time()
 parameters = {'metric':('cosine', 'euclidean', 'l1', 'l2'), 
@@ -100,17 +135,6 @@ print("Best parameters are:")
 print(clf.best_params_)
 print "training time: {0}".format(round(time()-t0, 3))
 clf = clf.best_estimator_
-
-# Ada Boost
-# t0 = time()
-# parameters = {'n_estimators': [50,100,200], 'learning_rate': [0.4,0.6,1]}
-
-# clf = GridSearchCV(adc, parameters, scoring = 'recall')
-# clf.fit(features_train, labels_train)
-# print("Best parameters are:")
-# print(clf.best_params_)
-# print "training time: {0}".format(round(time()-t0, 3))
-# clf = clf.best_estimator_
 
 ### Task 6: Dump your classifier, dataset, and features_list so anyone can
 ### check your results. You do not need to change anything below, but make sure
