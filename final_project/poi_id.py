@@ -20,6 +20,7 @@ features_list = ['poi', 'salary', 'deferral_payments', 'loan_advances', 'bonus',
                 'restricted_stock', 'director_fees', 'to_messages', 'from_poi_to_this_person', 'from_messages', 
                 'from_this_person_to_poi', 'shared_receipt_with_poi'] # You will need to use more features
 
+# There are a total of 17 features that were picked, while removing the total as they would create a problem of overfitting
 print("number of features to start with: {0}".format(len(features_list) - 1))
 
 ### Load the dictionary containing the dataset
@@ -27,16 +28,20 @@ with open("final_project_dataset.pkl", "r") as data_file:
     data_dict = pickle.load(data_file)
 
 ### Task 2: Remove outliers
+# There are 146 data points for this dataset
 print("\nSize of the dataset: " + str(len(data_dict)))
 
+# The number of POI/non-POI are counted here based on the the value of the POI feature.
 npoi = 0
 for p in data_dict.values():
     if p['poi']:
         npoi += 1
+
+# We have 18  POIs and 128 non-POIs
 print("number of pois: {0}".format(npoi))
 print("number of non-pois: {0}".format(len(data_dict) - npoi))
 
-
+# In the following lines, the features and number of NaNs are listed.
 print("print out the number of missing values in each feature: ")
 NaNInFeatures = [0 for i in range(len(features_list))]
 for i, person in enumerate(data_dict.values()):
@@ -48,9 +53,9 @@ for i, feature in enumerate(features_list):
     print(feature, NaNInFeatures[i])
 
 
-# print("\nThe list of people in the database: ")
-# for person in sorted(data_dict.keys()):
-#     print(person)
+print("\nThe list of people in the database: ")
+for person in sorted(data_dict.keys()):
+    print(person)
 
 # Remove the user 'TOTAL'
 data_dict.pop('TOTAL')
@@ -59,6 +64,11 @@ print(len(features_list))
 ### Store to my_dataset for easy export below.
 my_dataset = data_dict
 
+# I have an assumption that people with absurdly high to/from messages from POI maybe POI themselves. So, it makes sense to look at the 
+# to/from percentages.
+# Adding these features increases the precision by 0.004 with no change in recall in case of Nearest Centroid
+# For Ada boost the precision decreases by 0.07 and the recall increses by 0.01
+# So, it makes sense to add these features only in case of Nearest Centroid.
 print("New features created are: to_poi_messages_percent and from_poi_messages_percent")
 
 for person, feature in data_dict.items():
@@ -86,19 +96,102 @@ labels, features = targetFeatureSplit(data)
 from sklearn.neighbors.nearest_centroid import NearestCentroid
 from sklearn.ensemble import AdaBoostClassifier
 from sklearn.feature_selection import SelectKBest, f_classif
+from sklearn.cross_validation import StratifiedShuffleSplit
+from sklearn.preprocessing import MinMaxScaler
+
+min_max_scaler = MinMaxScaler()
 
 nc = NearestCentroid()
 adc = AdaBoostClassifier()
 
-print("Select 10 features by importance:")
-selector = SelectKBest(f_classif, k = 13)
+nc_report = {'accuracy': list(), 'precision': list(), 'recall': list()}
+adc_report = {'accuracy': list(), 'precision': list(), 'recall': list()}
+
+# this function is derived from tester.py
+def create_report(clf, features, labels):
+    cv = StratifiedShuffleSplit(labels, 100, random_state = 42)
+    true_negatives = 0
+    false_negatives = 0
+    true_positives = 0
+    false_positives = 0
+    for train_idx, test_idx in cv: 
+        features_train = []
+        features_test  = []
+        labels_train   = []
+        labels_test    = []
+        for ii in train_idx:
+            features_train.append( features[ii] )
+            labels_train.append( labels[ii] )
+        for jj in test_idx:
+            features_test.append( features[jj] )
+            labels_test.append( labels[jj] )
+        
+        ### fit the classifier using training set, and test on test set
+        clf.fit(features_train, labels_train)
+        predictions = clf.predict(features_test)
+        for prediction, truth in zip(predictions, labels_test):
+            if prediction == 0 and truth == 0:
+                true_negatives += 1
+            elif prediction == 0 and truth == 1:
+                false_negatives += 1
+            elif prediction == 1 and truth == 0:
+                false_positives += 1
+            elif prediction == 1 and truth == 1:
+                true_positives += 1
+    total_predictions = true_negatives + false_negatives + false_positives + true_positives
+    accuracy = round(1.0*(true_positives + true_negatives)/total_predictions,2)
+    try:
+        precision = round(1.0*true_positives/(true_positives+false_positives),2)
+    except ZeroDivisionError:
+        precision = 0.0
+    try:
+        recall = round(1.0*true_positives/(true_positives+false_negatives),2)
+    except ZeroDivisionError:
+        recall = 0.0
+    return accuracy, precision, recall
+
+print("Select features:")
+t0 = time()
+for i in range(17):
+    selector = SelectKBest(f_classif, k = i+1)
+    selector.fit(features, labels)
+    reduced_features = selector.fit_transform(features, labels)
+
+    # gather data for the report
+    a, p, r = create_report(adc, reduced_features, labels)
+    adc_report['accuracy'].append(a)
+    adc_report['precision'].append(p)
+    adc_report['recall'].append(r)
+
+    a, p, r = create_report(nc, min_max_scaler.fit_transform(reduced_features), labels)
+    nc_report['accuracy'].append(a)
+    nc_report['precision'].append(p)
+    nc_report['recall'].append(r)
+print "report time: {0}".format(round(time()-t0, 3))
+
+print(adc_report)
+print(nc_report)
+
+# ploting the accuracy, precision and recalls
+adc_plot = pd.DataFrame(adc_report)
+adc_plot.plot(title='AdaBoost Report', kind='bar')
+plt.show()
+
+nc_plot = pd.DataFrame(nc_report)
+nc_plot.plot(title='Nearest Centroid Report', kind='bar')
+plt.show()
+
+# Form the above plots we can see that the most balanced values of precision and recall are for:
+# AdaBoost: k = 11
+# NearestCentroid: k = 11
+
+selector = SelectKBest(f_classif, k = 11)
 selector.fit(features, labels)
+reduced_features = selector.fit_transform(features, labels)
+
 print("Scores of the features: ")
 for score in sorted(selector.scores_):
     print(score)
-reduced_features = selector.fit_transform(features, labels)
-
-
 ### Task 5: Tune your classifier to achieve better than .3 precision and recall 
 ### using our testing script. Check the tester.py script in the final project
 ### folder for details on the evaluation method, especially the test_classifier
@@ -115,6 +208,7 @@ features_train, features_test, labels_train, labels_test = \
 
 # Ada Boost
 t0 = time()
+# Parameters to be tuned for Ada Boost
 parameters = {'n_estimators': [50,100,200], 'learning_rate': [0.4,0.6,1]}
 
 clf = GridSearchCV(adc, parameters, scoring = 'recall')
@@ -126,6 +220,7 @@ clf = clf.best_estimator_
 
 # Nearest Centroid
 t0 = time()
+# Parameters to be tuned for NearestCentroid
 parameters = {'metric':('cosine', 'euclidean', 'l1', 'l2'), 
 'shrink_threshold':[0.9, 0.7, 0.5]}
 
