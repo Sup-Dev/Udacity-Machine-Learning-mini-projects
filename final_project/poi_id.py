@@ -49,9 +49,13 @@ for i, person in enumerate(data_dict.values()):
         if person[feature] == 'NaN':
             NaNInFeatures[j] += 1
 
+totalNaN = 0
+
 for i, feature in enumerate(features_list):
+    totalNaN += NaNInFeatures[i]
     print(feature, NaNInFeatures[i])
 
+print("Total NaN: " + str(totalNaN))
 
 print("\nThe list of people in the database: ")
 for person in sorted(data_dict.keys()):
@@ -175,11 +179,11 @@ print(nc_report)
 # ploting the accuracy, precision and recalls
 adc_plot = pd.DataFrame(adc_report)
 adc_plot.plot(title='AdaBoost Report', kind='bar')
-plt.show()
+plt.savefig('adc_report.png')
 
 nc_plot = pd.DataFrame(nc_report)
 nc_plot.plot(title='Nearest Centroid Report', kind='bar')
-plt.show()
+plt.savefig('nc_report.png')
 
 # Form the above plots we can see that the most balanced values of precision and recall are for:
 # AdaBoost: k = 11
